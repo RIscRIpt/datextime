@@ -1,0 +1,19 @@
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    width: 512px;
+}
+
+#progress {
+    width: 100%;
+    background-color: grey;
+}
+
+#bar {
+    width: 0;
+    height: 32px;
+    background-color: green;
+}

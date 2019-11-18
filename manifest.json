@@ -1,0 +1,28 @@
+{
+    "manifest_version": 2,
+    "name": "Datextime",
+    "short_name": "datextime",
+    "version": "1.0",
+    "description": "Extracts dates and times from the webpages",
+    "icons": {
+        "16": "icon-16.png",
+        "48": "icon-48.png",
+        "128": "icon-128.png"
+    },
+    "permissions": [
+        "<all_urls>"
+    ],
+    "browser_action": {
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+        {
+            "matches": [ "<all_urls>" ],
+            "js": [
+                "status.js",
+                "message.js",
+                "content-script.js"
+            ]
+        }
+    ]
+}
