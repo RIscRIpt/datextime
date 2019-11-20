@@ -1,6 +1,33 @@
 class TextWithContextExtractor {
     constructor () {
-        this.invalidTags = new Set([
+        this.TEXT_WRAPPER_TAGS = new Set([
+            "A",
+            "ABBR",
+            "ADDRESS",
+            "B",
+            "BDI",
+            "BDO",
+            "FONT",
+            "H1",
+            "H2",
+            "H3",
+            "H4",
+            "H5",
+            "H6",
+            "I",
+            "PARAM",
+            "Q",
+            "S",
+            "SPAN",
+            "STRIKE",
+            "STRONG",
+            "SUB",
+            "SUP",
+            "TIME",
+            "U"
+        ]);
+
+        this.INVALID_TAGS = new Set([
             "NOSCRIPT",
             "STYLE",
             "SCRIPT"
@@ -26,12 +53,12 @@ class TextWithContextExtractor {
         return element.tagName.toUpperCase();
     }
 
-    isSpan(element) {
-        return this.tagName(element) === "SPAN";
+    isWrapped(element) {
+        return this.TEXT_WRAPPER_TAGS.has(this.tagName(element));
     }
 
     isValidTextNode(element) {
-        return element.textContent.length !== 0 && !this.invalidTags.has(this.tagName(element));
+        return element.textContent.length !== 0 && !this.INVALID_TAGS.has(this.tagName(element));
     }
 
     traverse(element) {
@@ -39,7 +66,7 @@ class TextWithContextExtractor {
             if (!this.isValidTextNode(element)) {
                 return;
             }
-            while (this.isSpan(element)) {
+            while (this.isWrapped(element)) {
                 element = element.parentElement;
             }
             this.allTextNodesWithContext.push(new TextNodeWithContext(element));
@@ -80,32 +107,37 @@ function sendMessageToPopup(message, data) {
     chrome.runtime.sendMessage(new Message(message, { id: Status.popupId, ...data }));
 }
 
+function isEmpty(object) {
+    return Object.entries(object).length === 0 && object.constructor === Object;
+}
+
 function extract() {
     let tx = new TextWithContextExtractor();
-    let entities = tx.extract();
-    Status.amountOfEntities = entities.size;
+    let textNodesWithContext = tx.extract();
+    Status.amountOfEntities = textNodesWithContext.size;
     Status.entitiesFetched = 0;
     sendMessageToPopup(Message.Status, { status: Status });
-    let fakeProgress = () => {
-        sendMessageToPopup(Message.EntityFetched);
-        Status.entitiesFetched++;
-        if (Status.entitiesFetched < Status.amountOfEntities) {
-            setTimeout(fakeProgress, 50);
+    for (let textNode of textNodesWithContext) {
+        // wit.ai limitation
+        if (textNode.textContent.length > 280) {
+            Status.entitiesFetched++;
+            sendMessageToPopup(Message.EntityFetched);
+            continue;
         }
-    };
-    fakeProgress();
-        /*
-    for (let e of entities) {
-        fetch("https://api.wit.ai/message?v=20191118&q=" + encodeURIComponent(e.textContent), {
+        fetch("https://api.wit.ai/message?v=20191118&q=" + encodeURIComponent(textNode.textContent), {
             "headers": { "Authorization": "Bearer 4YZFTVFWZXQCD446DUWWHU7YX7DXRYZN" }
         }).then(response => {
             return response.json();
         }).then(json => {
-            e.parsedEntities = json.entities;
+            textNode.parsedEntities = json.entities;
+            Status.entitiesFetched++;
+            sendMessageToPopup(Message.EntityFetched);
+            if (json.entities && !isEmpty(json.entities)) {
+                console.log(textNode);
+                textNode.node.style.border = "2px dashed blue";
+            }
         });
-        break;
     }
-        */
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
