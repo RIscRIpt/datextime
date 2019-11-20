@@ -69,11 +69,33 @@ class TextNodeWithContext {
     }
 }
 
-let datextime_status = STATUS.NOT_EXTRACTING;
+let Status = {
+    status: STATUS.NOT_EXTRACTING,
+    popupId: null,
+    amountOfEntities: null,
+    entitiesFetched: null
+};
+
+function sendMessageToPopup(message, data) {
+    chrome.runtime.sendMessage(new Message(message, { id: Status.popupId, ...data }));
+}
 
 function extract() {
     let tx = new TextWithContextExtractor();
-    for (let e of tx.extract()) {
+    let entities = tx.extract();
+    Status.amountOfEntities = entities.size;
+    Status.entitiesFetched = 0;
+    sendMessageToPopup(Message.Status, { status: Status });
+    let fakeProgress = () => {
+        sendMessageToPopup(Message.EntityFetched);
+        Status.entitiesFetched++;
+        if (Status.entitiesFetched < Status.amountOfEntities) {
+            setTimeout(fakeProgress, 50);
+        }
+    };
+    fakeProgress();
+        /*
+    for (let e of entities) {
         fetch("https://api.wit.ai/message?v=20191118&q=" + encodeURIComponent(e.textContent), {
             "headers": { "Authorization": "Bearer 4YZFTVFWZXQCD446DUWWHU7YX7DXRYZN" }
         }).then(response => {
@@ -83,15 +105,19 @@ function extract() {
         });
         break;
     }
+        */
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch (request.type) {
         case Message.GetStatus:
-            sendResponse(datextime_status);
+            Status = { ...Status, ...request.data };
+            sendResponse(new Message(Message.Status, { status: Status }));
             break;
         case Message.Extract:
-            extract();
+            Status.status = STATUS.EXTRACTING;
+            Status.popupId = request.data.id;
+            setTimeout(extract, 0);
             break;
     }
 });

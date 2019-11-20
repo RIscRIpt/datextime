@@ -7,6 +7,14 @@ body {
     width: 512px;
 }
 
+body > section {
+    display: none;
+}
+
+body > section.active {
+    display: block;
+}
+
 #progress {
     width: 100%;
     background-color: grey;
