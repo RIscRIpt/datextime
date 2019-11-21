@@ -5,6 +5,7 @@ class TextWithContextExtractor {
             "ABBR",
             "ADDRESS",
             "B",
+            "BR",
             "BDI",
             "BDO",
             "FONT",
@@ -57,6 +58,15 @@ class TextWithContextExtractor {
         return this.TEXT_WRAPPER_TAGS.has(this.tagName(element));
     }
 
+    allChildrenWrapped(parent) {
+        for (let element of parent.children) {
+            if (!this.isWrapped(element)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     isValidTextNode(element) {
         return element.textContent.length !== 0 && !this.INVALID_TAGS.has(this.tagName(element));
     }
@@ -66,8 +76,12 @@ class TextWithContextExtractor {
             if (!this.isValidTextNode(element)) {
                 return;
             }
-            while (this.isWrapped(element)) {
-                element = element.parentElement;
+            let parent = element;
+            while (this.isWrapped(parent)) {
+                parent = parent.parentElement;
+            }
+            if (this.allChildrenWrapped(parent)) {
+                element = parent;
             }
             this.allTextNodesWithContext.push(new TextNodeWithContext(element));
         } else {
@@ -111,30 +125,44 @@ function isEmpty(object) {
     return Object.entries(object).length === 0 && object.constructor === Object;
 }
 
+let DATE_TIME_ENTITY_NAMES = new Set([
+    "date",
+    "daterange",
+    "datetime",
+    "datetimealt",
+    "time",
+    "timezone",
+    "datetimerange"
+]);
+
+function hasDateTimeEntity(entities) {
+    for (let entity of entities) {
+        if (DATE_TIME_ENTITY_NAMES.has(entity.entity)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function extract() {
     let tx = new TextWithContextExtractor();
     let textNodesWithContext = tx.extract();
     Status.amountOfEntities = textNodesWithContext.size;
     Status.entitiesFetched = 0;
     sendMessageToPopup(Message.Status, { status: Status });
+    console.log(Status);
     for (let textNode of textNodesWithContext) {
-        // wit.ai limitation
-        if (textNode.textContent.length > 280) {
-            Status.entitiesFetched++;
-            sendMessageToPopup(Message.EntityFetched);
-            continue;
-        }
-        fetch("https://api.wit.ai/message?v=20191118&q=" + encodeURIComponent(textNode.textContent), {
-            "headers": { "Authorization": "Bearer 4YZFTVFWZXQCD446DUWWHU7YX7DXRYZN" }
-        }).then(response => {
+        fetch("https://nlp-js.riscript.com/?text=" + encodeURIComponent(textNode.textContent)).then(response => {
             return response.json();
         }).then(json => {
             textNode.parsedEntities = json.entities;
             Status.entitiesFetched++;
             sendMessageToPopup(Message.EntityFetched);
-            if (json.entities && !isEmpty(json.entities)) {
-                console.log(textNode);
+            if (hasDateTimeEntity(json.entities)) {
+                console.log(textNode, json, "HAS DATE");
                 textNode.node.style.border = "2px dashed blue";
+            } else {
+                console.log(textNode, json, "HAS NO DATE");
             }
         });
     }
