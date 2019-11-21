@@ -38,11 +38,11 @@ class TextWithContextExtractor {
     extract() {
         this.allTextNodesWithContext = new Array();
         this.traverse(document);
-        let textContentsWithContext = new Set();
+        let textNodesWithContext = new Set();
         this.textNodesWithContext = new Set();
         for (let textNodeWithContext of this.allTextNodesWithContext) {
-            if (!textContentsWithContext.has(textNodeWithContext.textContent)) {
-                textContentsWithContext.add(textNodeWithContext.textContent);
+            if (!textNodesWithContext.has(textNodeWithContext.node)) {
+                textNodesWithContext.add(textNodeWithContext.node);
                 this.textNodesWithContext.add(textNodeWithContext);
             }
         }
@@ -150,7 +150,6 @@ function extract() {
     Status.amountOfEntities = textNodesWithContext.size;
     Status.entitiesFetched = 0;
     sendMessageToPopup(Message.Status, { status: Status });
-    console.log(Status);
     for (let textNode of textNodesWithContext) {
         fetch("https://nlp-js.riscript.com/?text=" + encodeURIComponent(textNode.textContent)).then(response => {
             return response.json();
@@ -159,10 +158,7 @@ function extract() {
             Status.entitiesFetched++;
             sendMessageToPopup(Message.EntityFetched);
             if (hasDateTimeEntity(json.entities)) {
-                console.log(textNode, json, "HAS DATE");
                 textNode.node.style.border = "2px dashed blue";
-            } else {
-                console.log(textNode, json, "HAS NO DATE");
             }
         });
     }
