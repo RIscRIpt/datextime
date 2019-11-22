@@ -51,6 +51,9 @@ class TextWithContextExtractor {
     }
 
     tagName(element) {
+        if (!element.tagName) {
+            return "";
+        }
         return element.tagName.toUpperCase();
     }
 
@@ -68,11 +71,19 @@ class TextWithContextExtractor {
     }
 
     isValidTextNode(element) {
-        return element.textContent.length !== 0 && !this.INVALID_TAGS.has(this.tagName(element));
+        return element.textContent.trim().length && !this.INVALID_TAGS.has(this.tagName(element));
+    }
+
+    hasTextNodes(element) {
+        for (let node of element.childNodes) {
+            if (node.nodeName === "#text" && this.isValidTextNode(node))
+                return true;
+        }
+        return false;
     }
 
     traverse(element) {
-        if (element.children.length === 0) {
+        if (element.children.length === 0 || this.hasTextNodes(element)) {
             if (!this.isValidTextNode(element)) {
                 return;
             }
@@ -83,7 +94,10 @@ class TextWithContextExtractor {
             if (this.allChildrenWrapped(parent)) {
                 element = parent;
             }
-            this.allTextNodesWithContext.push(new TextNodeWithContext(element));
+            let textNodeWithContext = new TextNodeWithContext(element);
+            if (textNodeWithContext.textContent) {
+                this.allTextNodesWithContext.push(textNodeWithContext);
+            }
         } else {
             for (let c of element.children) {
                 this.traverse(c);
@@ -92,21 +106,54 @@ class TextWithContextExtractor {
     }
 }
 
+const INLINE_NODE_STYLES = new Set([
+    "contents",
+    "inline",
+    "inline-block",
+    "inline-flex",
+    "inline-grid",
+    "inline-table"
+]);
+
+function isNodeInline(node) {
+    return INLINE_NODE_STYLES.has(getComputedStyle(node).display);
+}
+
+function isVisible(node) {
+    const styles = getComputedStyle(node);
+    return styles.display !== "none" && styles.visibility === "visible" && parseFloat(styles.opacity) > 0;
+}
+
 class TextNodeWithContext {
     constructor (node) {
         this.node = node;
-        this.textContent = this.getTextContent();
+        this.getTextContent();
     }
 
     getTextContent() {
-        if (this.node.children.length === 0) {
-            return this.node.textContent;
+        this.textContent = "";
+        if (isVisible(this.node)) {
+            if (this.node.childNodes.length > 1) {
+                let textContents = [];
+                let addSpace = false;
+                for (let c of this.node.childNodes) {
+                    if (c.nodeName === "#text") {
+                        textContents.push(c.textContent);
+                        addSpace = false;
+                    } else {
+                        if (addSpace || !isNodeInline(c)) {
+                            textContents.push(" ");
+                        }
+                        textContents.push(new TextNodeWithContext(c).textContent);
+                        addSpace = true;
+                    }
+                }
+                this.textContent = textContents.join("").trim();
+            } else {
+                this.textContent = this.node.textContent.trim();
+            }
         }
-        let textContents = new Array();
-        for (let c of this.node.children) {
-            textContents.push(new TextNodeWithContext(c).textContent);
-        }
-        return textContents.join(" ");
+        return this.textContent;
     }
 }
 
