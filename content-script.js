@@ -172,42 +172,21 @@ function isEmpty(object) {
     return Object.entries(object).length === 0 && object.constructor === Object;
 }
 
-let DATE_TIME_ENTITY_NAMES = new Set([
-    "date",
-    "daterange",
-    "datetime",
-    "datetimealt",
-    "time",
-    "timezone",
-    "datetimerange"
-]);
-
-function hasDateTimeEntity(entities) {
-    for (let entity of entities) {
-        if (DATE_TIME_ENTITY_NAMES.has(entity.entity)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 function extract() {
+    let ner = new NER();
     let tx = new TextWithContextExtractor();
     let textNodesWithContext = tx.extract();
     Status.amountOfEntities = textNodesWithContext.size;
     Status.entitiesFetched = 0;
     sendMessageToPopup(Message.Status, { status: Status });
     for (let textNode of textNodesWithContext) {
-        fetch("https://nlp-js.riscript.com/?text=" + encodeURIComponent(textNode.textContent)).then(response => {
-            return response.json();
-        }).then(json => {
-            textNode.parsedEntities = json.entities;
+        let result = ner.parse(textNode.textContent);
+        if (result) {
+            textNode.node.style.border = "2px dashed blue";
             Status.entitiesFetched++;
             sendMessageToPopup(Message.EntityFetched);
-            if (hasDateTimeEntity(json.entities)) {
-                textNode.node.style.border = "2px dashed blue";
-            }
-        });
+            console.log(result);
+        }
     }
 }
 
