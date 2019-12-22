@@ -124,6 +124,53 @@ function isVisible(node) {
     return styles.display !== "none" && styles.visibility === "visible" && parseFloat(styles.opacity) > 0;
 }
 
+class Color {
+    constructor (color) {
+        if (typeof (color) === "string") {
+            let rgba = color.match(/rgba?\((.*)\)/)[1].split(',').map(Number);
+            this.red = rgba[0];
+            this.green = rgba[1];
+            this.blue = rgba[2];
+            if ("3" in rgba) {
+                this.alpha = rgba[3];
+            }
+        } else {
+            this.red = color.red;
+            this.green = color.green;
+            this.blue = color.blue;
+            this.alpha = color.alpha;
+        }
+    }
+
+    isTransparent() {
+        return this.alpha === 0;
+    }
+
+    getFixed() {
+        if (this.isTransparent()) {
+            return new Color({ red: 255, green: 255, blue: 255 });
+        }
+        return new Color(this);
+    }
+
+    getInverted() {
+        let inverted = new Color(this);
+        inverted.red = 255 - this.red;
+        inverted.green = 255 - this.green;
+        inverted.blue = 255 - this.blue;
+        return inverted;
+    }
+
+    toString() {
+        let s = "rgb(" + this.red + ", " + this.green + ", " + this.blue;
+        if (this.alpha) {
+            s += ", " + this.alpha;
+        }
+        s += ")";
+        return s;
+    }
+}
+
 class TextNodeWithContext {
     constructor (node) {
         this.node = node;
@@ -144,7 +191,8 @@ class TextNodeWithContext {
                         if (addSpace || !isNodeInline(c)) {
                             textContents.push(" ");
                         }
-                        textContents.push(new TextNodeWithContext(c).textContent);
+                        let textNodeWithContext = new TextNodeWithContext(c);
+                        textContents.push(textNodeWithContext.textContent);
                         addSpace = true;
                     }
                 }
@@ -154,6 +202,43 @@ class TextNodeWithContext {
             }
         }
         return this.textContent;
+    }
+
+    getRealBackgroundColor(node) {
+        let color = new Color(getComputedStyle(node).backgroundColor);
+        while (color.isTransparent()) {
+            if (!node.parentElement) {
+                return color.getFixed();
+            }
+            node = node.parentElement; 
+            color = new Color(getComputedStyle(node).backgroundColor);
+        }
+        return color;
+    }
+
+    highlight(entity) {
+        let startIndex = this.node.innerHTML.toLowerCase().indexOf(entity.text.toLowerCase());
+        let realBackgroundColor = this.getRealBackgroundColor(this.node);
+        let highlightColor = realBackgroundColor.getInverted();
+        let boxShadowStyle = "0 0 2px 0 " + highlightColor.toString();
+        let colorStyle = realBackgroundColor.toString();
+        let paddingStyle = "0 4px";
+        let backgroundColorStyle = highlightColor.toString();
+        if (startIndex !== -1) {
+            let endIndex = startIndex + entity.text.length;
+            let html = this.node.innerHTML;
+            this.node.innerHTML =
+                html.substring(0, startIndex) +
+                "<span style='box-shadow: " + boxShadowStyle + "; padding: " + paddingStyle + "; color: " + colorStyle + "; background-color: " + backgroundColorStyle + ";'>" +
+                html.substring(startIndex, endIndex) +
+                "</span>" +
+                html.substring(endIndex);
+        } else {
+            this.node.style.boxShadow = boxShadowStyle;
+            this.node.style.padding = paddingStyle;
+            this.node.style.color = colorStyle;
+            this.node.style.backgroundColor = backgroundColorStyle;
+        }
     }
 }
 
@@ -179,15 +264,26 @@ function extract() {
     Status.amountOfEntities = textNodesWithContext.size;
     Status.entitiesFetched = 0;
     sendMessageToPopup(Message.Status, { status: Status });
+    let toProcess = [];
     for (let textNode of textNodesWithContext) {
-        let result = ner.parse(textNode.textContent);
-        if (result) {
-            textNode.node.style.border = "2px dashed blue";
+        toProcess.push(() => {
+            let entities = ner.parse(textNode.textContent);
+            for (let entity of entities) {
+                textNode.highlight(entity);
+            }
             Status.entitiesFetched++;
             sendMessageToPopup(Message.EntityFetched);
-            console.log(result);
-        }
+        });
     }
+    let process = () => {
+        setTimeout(() => {
+            if (toProcess.length) {
+                toProcess.shift()();
+                process();
+            }
+        }, 0);
+    };
+    process();
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
