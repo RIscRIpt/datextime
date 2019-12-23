@@ -9,16 +9,24 @@
         <script src="/popup.js"></script>
     </head>
     <body>
-        <h1>Date & Time extractor</h1>
-        <section id="not-extracting">
-            <button id="btn-extract">Extract</button>
-        </section>
+        <span id="header">Date & Time extractor</span>
+        <section id="not-extracting"></section>
         <section id="extracting">
-            <div id="progress">
-                <div id="bar"></div>
-            </div>
+            <div id="progress-wrapper">
+                <span id="text-progress">Checked <span id="amount">0</span> out of <span id="total-amount">0</span> text entries.</span>
+                <div id="progress">
+                    <div id="bar"></div>
+                </div>
+            </div >
         </section>
-        <section id="extracted">
+        <section id="extracted"></section>
+        <section id="entries">
+            <div id="entries-wrapper">
+                <div class="entry header">
+                    <span class="entry-value">Entry</span>
+                    <span class="entry-context">Context</span>
+                </div>
+            </div>
         </section>
     </body>
 </html>

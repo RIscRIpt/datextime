@@ -8,8 +8,22 @@ function sendMessageToActiveTab(message, onResponse) {
     chrome.tabs.sendMessage(Status.popupId, message, onResponse);
 }
 
+function highlighEntry() {
+    let path = this.getAttribute("path");
+    sendMessageToActiveTab(new Message(Message.Highlight, { path: path }));
+}
+
+function lowlightEntry() {
+    let path = this.getAttribute("path");
+    sendMessageToActiveTab(new Message(Message.Lowlight, { path: path }));
+}
+
+function focusEntry() {
+    let path = this.getAttribute("path");
+    sendMessageToActiveTab(new Message(Message.Focus, { path: path }));
+}
+
 function showSection(id) {
-    console.log("showSection ", id);
     let allSections = document.querySelectorAll("body > section");
     let sectionToActivate = document.querySelector("#" + id);
     for (let section of allSections) {
@@ -18,16 +32,79 @@ function showSection(id) {
     sectionToActivate.classList.add("active");
 }
 
-function updateProgressbar() {
+function updateProgress() {
     let $bar = document.querySelector("#bar");
-    $bar.style.width = (Status.entitiesFetched / Status.amountOfEntities * 100) + "%";
+    let $textProgress = document.querySelector("#text-progress");
+    let $amount = document.querySelector("#amount");
+    let $totalAmount = document.querySelector("#total-amount");
+    $bar.style.width = (Status.fetchedEntries.length / Status.amountOfEntries * 100) + "%";
+    $amount.textContent = Status.fetchedEntries.length;
+    $totalAmount.textContent = Status.amountOfEntries;
+    $textProgress.style.visibility = "visible";
+}
+
+function createEntryElement(entry, context, path) {
+    let $entry = document.createElement("div");
+    $entry.classList.add("entry");
+    let $entryValue = document.createElement("span");
+    let $entryContext = document.createElement("span");
+    $entryValue.classList.add("entry-value");
+    $entryContext.classList.add("entry-context");
+    $entryValue.textContent = entry.text;
+    $entryContext.textContent = context;
+    $entry.appendChild($entryValue);
+    $entry.appendChild($entryContext);
+    $entry.setAttribute("path", path);
+    $entry.addEventListener("mouseover", highlighEntry);
+    $entry.addEventListener("mouseleave", lowlightEntry);
+    $entry.addEventListener("click", focusEntry);
+    return $entry;
+}
+
+function createEntryWrapper() {
+    let $wrapper = document.createElement("div");
+    $wrapper.setAttribute("id", "entries-wrapper");
+    let $header = document.createElement("div");
+    $header.classList.add("entry", "header");
+    let $value = document.createElement("span");
+    $value.classList.add("entry-value");
+    $value.textContent = "Entry";
+    let $context = document.createElement("span");
+    $context.classList.add("entry-context");
+    $context.textContent = "Context";
+    $header.appendChild($value);
+    $header.appendChild($context);
+    $wrapper.appendChild($header);
+    return $wrapper;
+}
+
+function updateEntries() {
+    let $entries = document.querySelector("#entries");
+    let $entriesWrapper = document.querySelector("#entries-wrapper");
+    let $newEntriesWrapper = createEntryWrapper();
+    for (let entry of Status.fetchedEntries) {
+        for (let e of entry.entries) {
+            let element = createEntryElement(e, entry.context, entry.path);
+            $newEntriesWrapper.appendChild(element);
+        }
+    }
+    $entries.removeChild($entriesWrapper);
+    $entries.appendChild($newEntriesWrapper);
 }
 
 function updateStatus(status) {
-    console.log("updateStatus", status);
     Status = { ...Status, ...status };
-    if (Status.status === STATUS.EXTRACTING) {
-        updateProgressbar();
+    switch (Status.status) {
+        case STATUS.NOT_EXTRACTING:
+            sendMessageToActiveTab(new Message(Message.Extract, { id: Status.popupId }));
+            break;
+        case STATUS.EXTRACTING:
+            updateProgress();
+            updateEntries();
+            break;
+        case STATUS.EXTRACTED:
+            updateEntries();
+            break;
     }
     showSection(Status.status);
 }
@@ -35,8 +112,8 @@ function updateStatus(status) {
 let Status = {
     status: STATUS.UNKNOWN,
     popupId: -1,
-    amountOfEntities: null,
-    entitiesFetched: null,
+    amountOfEntries: null,
+    fetchedEntries: [],
 };
 
 window.addEventListener("load", e => {
@@ -47,9 +124,6 @@ window.addEventListener("load", e => {
         Status.popupId = tabs[0].id;
         sendMessageToActiveTab(new Message(Message.GetStatus, { popupId: Status.popupId }), response => {
             updateStatus(response.data.status);
-        });
-        document.querySelector("#btn-extract").addEventListener("click", e => {
-            sendMessageToActiveTab(new Message(Message.Extract, { id: Status.popupId }));
         });
     });
 });
@@ -63,8 +137,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             updateStatus(request.data.status);
             break;
         case Message.EntityFetched:
-            Status.entitiesFetched++;
-            updateProgressbar();
+            Status.fetchedEntries.push(request.data);
+            updateProgress();
+            updateEntries();
             break;
     }
 });

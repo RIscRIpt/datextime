@@ -25,6 +25,9 @@
                 "recognizers-text.browser.js",
                 "ner.js",
                 "content-script.js"
+            ],
+            "css": [
+                "highlight.css"
             ]
         }
     ]

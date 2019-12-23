@@ -245,34 +245,90 @@ class TextNodeWithContext {
 let Status = {
     status: STATUS.NOT_EXTRACTING,
     popupId: null,
-    amountOfEntities: null,
-    entitiesFetched: null
+    amountOfEntries: null,
+    fetchedEntries: []
 };
+
+let HighlightedEntry = null;
+
+function lowlightEntry(element) {
+    if (!element) {
+        return;
+    }
+    element.classList.remove("__dxt_highlight_context");
+}
+
+function highlightEntry(element) {
+    if (HighlightedEntry) {
+        lowlightEntry(HighlightedEntry);
+    }
+    if (!element) {
+        return;
+    }
+    Highlighted = element;
+    element.classList.add("__dxt_highlight_context");
+}
+
+function focusEntry(element) {
+    element.scrollIntoView();
+}
 
 function sendMessageToPopup(message, data) {
     chrome.runtime.sendMessage(new Message(message, { id: Status.popupId, ...data }));
+}
+
+function sendStatusToPopup() {
+    sendMessageToPopup(Message.Status, { status: Status });
 }
 
 function isEmpty(object) {
     return Object.entries(object).length === 0 && object.constructor === Object;
 }
 
+function getDOMPath(element) {
+    let stack = [];
+    while (element.parentNode != null) {
+        let siblingCount = 0;
+        let siblingIndex = 0;
+        for (let i = 0; i < element.parentNode.childNodes.length; i++) {
+            let sibling = element.parentNode.childNodes[i];
+            if (sibling.nodeName == element.nodeName) {
+                siblingCount++;
+                if (sibling === element) {
+                    siblingIndex = siblingCount;
+                }
+            }
+        }
+        if (element.hasAttribute("id") && element.id !== "") {
+            stack.unshift(element.nodeName.toLowerCase() + "#" + element.id);
+            break;
+        } else if (siblingCount > 1) {
+            stack.unshift(element.nodeName.toLowerCase() + ":nth-of-type(" + siblingIndex + ")");
+        } else {
+            stack.unshift(element.nodeName.toLowerCase());
+        }
+        element = element.parentNode;
+    }
+    return stack.join(">");
+}
+
 function extract() {
     let ner = new NER();
     let tx = new TextWithContextExtractor();
     let textNodesWithContext = tx.extract();
-    Status.amountOfEntities = textNodesWithContext.size;
-    Status.entitiesFetched = 0;
-    sendMessageToPopup(Message.Status, { status: Status });
+    Status.amountOfEntries = textNodesWithContext.size;
+    Status.fetchedEntries = [];
+    sendStatusToPopup();
     let toProcess = [];
     for (let textNode of textNodesWithContext) {
         toProcess.push(() => {
-            let entities = ner.parse(textNode.textContent);
-            for (let entity of entities) {
+            let entries = ner.parse(textNode.textContent);
+            for (let entity of entries) {
                 textNode.highlight(entity);
             }
-            Status.entitiesFetched++;
-            sendMessageToPopup(Message.EntityFetched);
+            let fetchedEntry = { entries: entries, context: textNode.textContent, path: getDOMPath(textNode.node) };
+            Status.fetchedEntries.push(fetchedEntry);
+            sendMessageToPopup(Message.EntityFetched, fetchedEntry);
         });
     }
     let process = () => {
@@ -280,6 +336,9 @@ function extract() {
             if (toProcess.length) {
                 toProcess.shift()();
                 process();
+            } else {
+                Status.status = STATUS.EXTRACTED;
+                sendStatusToPopup();
             }
         }, 0);
     };
@@ -296,6 +355,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             Status.status = STATUS.EXTRACTING;
             Status.popupId = request.data.id;
             setTimeout(extract, 0);
+            break;
+        case Message.Highlight:
+            highlightEntry(document.querySelector(request.data.path));
+            break;
+        case Message.Lowlight:
+            lowlightEntry(document.querySelector(request.data.path));
+            break;
+        case Message.Focus:
+            focusEntry(document.querySelector(request.data.path));
             break;
     }
 });
