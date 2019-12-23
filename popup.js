@@ -43,6 +43,20 @@ function updateProgress() {
     $textProgress.style.visibility = "visible";
 }
 
+function highlightEntryContext(entry, context) {
+    let startPosition = context.toLowerCase().indexOf(entry.text.toLowerCase());
+    if (startPosition !== -1) {
+        let endPosition = startPosition + entry.text.length;
+        context =
+            context.substring(0, startPosition) +
+            "<strong>" +
+            context.substring(startPosition, endPosition) +
+            "</strong>" +
+            context.substring(endPosition);
+    }
+    return context;
+}
+
 function createEntryElement(entry, context, path) {
     let $entry = document.createElement("div");
     $entry.classList.add("entry");
@@ -51,7 +65,7 @@ function createEntryElement(entry, context, path) {
     $entryValue.classList.add("entry-value");
     $entryContext.classList.add("entry-context");
     $entryValue.textContent = entry.text;
-    $entryContext.textContent = context;
+    $entryContext.innerHTML = highlightEntryContext(entry, context);
     $entry.appendChild($entryValue);
     $entry.appendChild($entryContext);
     $entry.setAttribute("path", path);

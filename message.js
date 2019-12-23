@@ -5,6 +5,7 @@ class Message {
     }
 }
 
+Message.Activate = "activate";
 Message.Status = "status";
 Message.GetStatus = "get_status";
 Message.Extract = "extract";

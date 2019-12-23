@@ -45,24 +45,52 @@ body > section.active {
     background: linear-gradient(90deg, rgba(0,128,0,1) 0%, rgba(0,192,0,1) 100%);
 }
 
-#entries {
+#entries-wrapper {
     display: table;
     width: 100%;
     max-height: 600px;
+    border-collapse: collapse;
+}
+
+#extracting {
+    border: 1px dotted gray;
 }
 
 .entry {
     display: table-row;
 }
 
+.entry:not(.header):hover {
+    background-color: #eeeeee;
+}
+
 .entry.header {
+    font-weight: bolder;
+}
+
+.entry.header > .entry-value,
+.entry.header > .entry-context {
+    border-top: none;
+    background-color: #ffffbb;
+}
+
+.entry:last-child > .entry-value,
+.entry:last-child > .entry-context {
+    border-bottom: none;
+}
+
+.entry-value, .entry-context {
+    display: table-cell;
+    border: 1px dotted gray;
+    padding: 2px 4px;
 }
 
 .entry-value {
-    display: table-cell;
     text-transform: capitalize;
+    border-left: none;
+    font-weight: bold;
 }
 
 .entry-context {
-    display: table-cell;
+    border-right: none;
 }

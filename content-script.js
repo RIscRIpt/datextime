@@ -345,6 +345,10 @@ function extract() {
     process();
 }
 
+window.addEventListener("load", (e) => {
+    chrome.runtime.sendMessage(new Message(Message.Activate));
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch (request.type) {
         case Message.GetStatus:
