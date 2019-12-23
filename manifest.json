@@ -3,7 +3,7 @@
     "name": "Datextime",
     "short_name": "datextime",
     "version": "1.0",
-    "description": "Extracts dates and times from the webpages",
+    "description": "Date and time extractor",
     "icons": {
         "16": "icon-16.png",
         "48": "icon-48.png",
