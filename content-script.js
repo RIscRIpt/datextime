@@ -272,7 +272,7 @@ function highlightEntry(element) {
     if (!element) {
         return;
     }
-    Highlighted = element;
+    HighlightedEntry = element;
     element.classList.add("__dxt_highlight_context");
     focusEntry(element);
 }
@@ -368,7 +368,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             highlightEntry(document.querySelector(request.data.path));
             break;
         case Message.Lowlight:
-            lowlightEntry(document.querySelector(request.data.path));
+            if (request.data.path) {
+                lowlightEntry(document.querySelector(request.data.path));
+            } else {
+                lowlightEntry(HighlightedEntry);
+            }
             break;
     }
 });

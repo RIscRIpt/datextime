@@ -14,8 +14,16 @@ function highlighEntry() {
 }
 
 function lowlightEntry() {
+    if (Status.keepHighlight) {
+        return;
+    }
     let path = this.getAttribute("path");
     sendMessageToActiveTab(new Message(Message.Lowlight, { path: path }));
+}
+
+function focusEntry() {
+    Status.keepHighlight = true;
+    window.close();
 }
 
 function showSection(id) {
@@ -66,6 +74,7 @@ function createEntryElement(entry, context, path) {
     $entry.setAttribute("path", path);
     $entry.addEventListener("mouseover", highlighEntry);
     $entry.addEventListener("mouseleave", lowlightEntry);
+    $entry.addEventListener("click", focusEntry);
     return $entry;
 }
 
@@ -135,6 +144,7 @@ let Status = {
     amountOfEntries: null,
     fetchedEntries: [],
     entriesShown: false,
+    keepHighlight: false,
 };
 
 window.addEventListener("load", e => {
@@ -146,6 +156,7 @@ window.addEventListener("load", e => {
         sendMessageToActiveTab(new Message(Message.GetStatus, { popupId: Status.popupId }), response => {
             updateStatus(response.data.status);
         });
+        sendMessageToActiveTab(new Message(Message.Lowlight, { path: null }));
     });
 });
 
