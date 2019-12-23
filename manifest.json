@@ -33,6 +33,9 @@
                 "status.js",
                 "message.js",
                 "recognizers-text-date-time.browser.js",
+                "recognizers-text-number-with-unit.browser.js",
+                "recognizers-text-number.browser.js",
+                "recognizers-text-sequence.browser.js",
                 "recognizers-text.browser.js",
                 "ner.js",
                 "content-script.js"
