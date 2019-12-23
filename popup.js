@@ -5,7 +5,7 @@ function setProgress(progress) {
 }
 
 function sendMessageToActiveTab(message, onResponse) {
-    chrome.tabs.sendMessage(Status.popupId, message, onResponse);
+    chrome.tabs.sendMessage(Status.tabId, message, onResponse);
 }
 
 function highlighEntry() {
@@ -125,7 +125,13 @@ function updateStatus(status) {
     Status = { ...Status, ...status };
     switch (Status.status) {
         case STATUS.NOT_EXTRACTING:
-            sendMessageToActiveTab(new Message(Message.Extract, { id: Status.popupId }));
+            chrome.tabs.executeScript(Status.tabId, { file: "recognizers-text.browser.js" });
+            chrome.tabs.executeScript(Status.tabId, { file: "recognizers-text-sequence.browser.js" });
+            chrome.tabs.executeScript(Status.tabId, { file: "recognizers-text-number.browser.js" });
+            chrome.tabs.executeScript(Status.tabId, { file: "recognizers-text-number-with-unit.browser.js" });
+            chrome.tabs.executeScript(Status.tabId, { file: "recognizers-text-date-time.browser.js" }, () => {
+                sendMessageToActiveTab(new Message(Message.Extract, { id: Status.tabId }));
+            });
             break;
         case STATUS.EXTRACTING:
             updateProgress();
@@ -140,7 +146,7 @@ function updateStatus(status) {
 
 let Status = {
     status: STATUS.UNKNOWN,
-    popupId: -1,
+    tabId: -1,
     amountOfEntries: null,
     fetchedEntries: [],
     entriesShown: false,
@@ -152,8 +158,8 @@ window.addEventListener("load", e => {
         if (tabs.length != 1) {
             return;
         }
-        Status.popupId = tabs[0].id;
-        sendMessageToActiveTab(new Message(Message.GetStatus, { popupId: Status.popupId }), response => {
+        Status.tabId = tabs[0].id;
+        sendMessageToActiveTab(new Message(Message.GetStatus, { tabId: Status.tabId }), response => {
             updateStatus(response.data.status);
         });
         sendMessageToActiveTab(new Message(Message.Lowlight, { path: null }));
@@ -161,7 +167,7 @@ window.addEventListener("load", e => {
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (!request.data || request.data.id !== Status.popupId) {
+    if (!request.data || request.data.id !== Status.tabId) {
         return;
     }
     switch (request.type) {

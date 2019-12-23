@@ -244,7 +244,7 @@ class TextNodeWithContext {
 
 let Status = {
     status: STATUS.NOT_EXTRACTING,
-    popupId: null,
+    tabId: null,
     amountOfEntries: null,
     fetchedEntries: []
 };
@@ -278,7 +278,7 @@ function highlightEntry(element) {
 }
 
 function sendMessageToPopup(message, data) {
-    chrome.runtime.sendMessage(new Message(message, { id: Status.popupId, ...data }));
+    chrome.runtime.sendMessage(new Message(message, { id: Status.tabId, ...data }));
 }
 
 function sendStatusToPopup() {
@@ -361,7 +361,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             break;
         case Message.Extract:
             Status.status = STATUS.EXTRACTING;
-            Status.popupId = request.data.id;
+            Status.tabId = request.data.id;
             setTimeout(extract, 0);
             break;
         case Message.Highlight:
