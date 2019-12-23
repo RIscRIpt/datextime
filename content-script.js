@@ -217,7 +217,7 @@ class TextNodeWithContext {
     }
 
     highlight(entity) {
-        let startIndex = this.node.innerHTML.toLowerCase().indexOf(entity.text.toLowerCase());
+        let startIndex = this.node.innerHTML.toLowerCase().lastIndexOf(entity.text.toLowerCase());
         let realBackgroundColor = this.getRealBackgroundColor(this.node);
         let highlightColor = realBackgroundColor.getInverted();
         let boxShadowStyle = "0 0 2px 0 " + highlightColor.toString();
@@ -229,7 +229,7 @@ class TextNodeWithContext {
             let html = this.node.innerHTML;
             this.node.innerHTML =
                 html.substring(0, startIndex) +
-                "<span style='box-shadow: " + boxShadowStyle + "; padding: " + paddingStyle + "; color: " + colorStyle + "; background-color: " + backgroundColorStyle + ";'>" +
+                "<span style='box-shadow: " + boxShadowStyle + "; padding: " + paddingStyle + "; color: " + colorStyle + "; background-color: " + backgroundColorStyle + "; display: inline;'>" +
                 html.substring(startIndex, endIndex) +
                 "</span>" +
                 html.substring(endIndex);
@@ -251,6 +251,13 @@ let Status = {
 
 let HighlightedEntry = null;
 
+function focusEntry(element) {
+    const elementRect = element.getBoundingClientRect();
+    const absoluteElementTop = elementRect.top + window.pageYOffset;
+    const middle = absoluteElementTop - (window.innerHeight / 2);
+    window.scrollTo(0, middle);
+}
+
 function lowlightEntry(element) {
     if (!element) {
         return;
@@ -267,10 +274,7 @@ function highlightEntry(element) {
     }
     Highlighted = element;
     element.classList.add("__dxt_highlight_context");
-}
-
-function focusEntry(element) {
-    element.scrollIntoView();
+    focusEntry(element);
 }
 
 function sendMessageToPopup(message, data) {
@@ -365,9 +369,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             break;
         case Message.Lowlight:
             lowlightEntry(document.querySelector(request.data.path));
-            break;
-        case Message.Focus:
-            focusEntry(document.querySelector(request.data.path));
             break;
     }
 });

@@ -18,11 +18,6 @@ function lowlightEntry() {
     sendMessageToActiveTab(new Message(Message.Lowlight, { path: path }));
 }
 
-function focusEntry() {
-    let path = this.getAttribute("path");
-    sendMessageToActiveTab(new Message(Message.Focus, { path: path }));
-}
-
 function showSection(id) {
     let allSections = document.querySelectorAll("body > section");
     let sectionToActivate = document.querySelector("#" + id);
@@ -71,7 +66,6 @@ function createEntryElement(entry, context, path) {
     $entry.setAttribute("path", path);
     $entry.addEventListener("mouseover", highlighEntry);
     $entry.addEventListener("mouseleave", lowlightEntry);
-    $entry.addEventListener("click", focusEntry);
     return $entry;
 }
 
@@ -93,6 +87,10 @@ function createEntryWrapper() {
 }
 
 function updateEntries() {
+    if (Status.entriesShown) {
+        return;
+    }
+    Status.entriesShown = true;
     let $entries = document.querySelector("#entries");
     let $entriesWrapper = document.querySelector("#entries-wrapper");
     let $newEntriesWrapper = createEntryWrapper();
@@ -104,6 +102,14 @@ function updateEntries() {
     }
     $entries.removeChild($entriesWrapper);
     $entries.appendChild($newEntriesWrapper);
+}
+
+function displayEntry(entry) {
+    let $entriesWrapper = document.querySelector("#entries-wrapper");
+    for (let e of entry.entries) {
+        let element = createEntryElement(e, entry.context, entry.path);
+        $entriesWrapper.appendChild(element);
+    }
 }
 
 function updateStatus(status) {
@@ -128,6 +134,7 @@ let Status = {
     popupId: -1,
     amountOfEntries: null,
     fetchedEntries: [],
+    entriesShown: false,
 };
 
 window.addEventListener("load", e => {
@@ -153,7 +160,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         case Message.EntityFetched:
             Status.fetchedEntries.push(request.data);
             updateProgress();
-            updateEntries();
+            displayEntry(request.data);
             break;
     }
 });
