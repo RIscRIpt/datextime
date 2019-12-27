@@ -2,7 +2,7 @@
     "manifest_version": 2,
     "name": "Datextime",
     "short_name": "datextime",
-    "version": "1.0",
+    "version": "1.1",
     "description": "Date and time extractor",
     "icons": {
         "16": "icon-16.png",
