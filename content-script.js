@@ -187,6 +187,8 @@ class TextNodeWithContext {
                     if (c.nodeName === "#text") {
                         textContents.push(c.textContent);
                         addSpace = false;
+                    } else if (c.nodeName.startsWith("#")) {
+                        continue;
                     } else {
                         if (addSpace || !isNodeInline(c)) {
                             textContents.push(" ");
